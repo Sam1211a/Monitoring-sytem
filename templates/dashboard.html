@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Enterprise Monitoring Dashboard</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Segoe UI',sans-serif;
+}
+
+body{
+    display:flex;
+    background:#0f172a;
+    color:white;
+}
+
+.sidebar{
+    width:240px;
+    height:100vh;
+    background:#020617;
+    padding:25px;
+}
+
+.main{
+    flex:1;
+    padding:25px;
+}
+
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.actions{
+    display:flex;
+    gap:10px;
+}
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:15px;
+    margin-bottom:25px;
+}
+
+.card{
+    background:#1e293b;
+    padding:20px;
+    border-radius:12px;
+}
+
+.table-box{
+    background:#1e293b;
+    padding:20px;
+    border-radius:12px;
+    max-height:500px;
+    overflow:auto;
+}
+
+.up{color:#22c55e;font-weight:bold;}
+.down{color:#ef4444;font-weight:bold;}
+
+.btn{
+    padding:8px 14px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    background:#3b82f6;
+    color:white;
+}
+
+.btn:hover{
+    background:#2563eb;
+}
+
+.modal{
+    display:none;
+    position:fixed;
+    top:0;left:0;
+    width:100%;height:100%;
+    background:rgba(0,0,0,0.8);
+    justify-content:center;
+    align-items:center;
+}
+
+.modal img{
+    width:80%;
+    border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+    <h2>⚡ Monitor</h2>
+</div>
+
+<div class="main">
+
+<div class="topbar">
+    <h1>Network Monitoring + Agent System</h1>
+
+    <div class="actions">
+        <button class="btn" onclick="scan()">🔍 Scan</button>
+        <button class="btn" onclick="startScreens()">📸 Screens</button>
+    </div>
+</div>
+
+<div class="cards">
+    <div class="card"><h3>Total</h3><p id="total">0</p></div>
+    <div class="card"><h3>Online</h3><p id="online">0</p></div>
+    <div class="card"><h3>Offline</h3><p id="offline">0</p></div>
+    <div class="card"><h3>Last Update</h3><p id="time">-</p></div>
+</div>
+
+<div class="table-box">
+<table width="100%">
+<thead>
+<tr>
+<th>IP</th>
+<th>Status</th>
+<th>Hostname</th>
+<th>OS</th>
+<th>Screen</th>
+</tr>
+</thead>
+
+<tbody id="body">
+<tr><td colspan="5">Click Scan</td></tr>
+</tbody>
+</table>
+</div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal" id="modal" onclick="closeModal()">
+    <img id="screenImg">
+</div>
+
+<script>
+
+let devices = new Map();
+let source = null;
+
+/* ===================== SCAN (FIXED) ===================== */
+function scan(){
+
+    if(source){
+        source.close();
+    }
+
+    source = new EventSource("/scan");
+
+    document.getElementById("body").innerHTML =
+        `<tr><td colspan="5">Scanning...</td></tr>`;
+
+    source.onmessage = function(e){
+
+        let d = JSON.parse(e.data);
+
+        if(d.done){
+            source.close();
+            return;
+        }
+
+        devices.set(d.ip, d);
+
+        render();
+    };
+
+    source.onerror = function(){
+        source.close();
+        alert("Connection error!");
+    };
+}
+
+/* ===================== RENDER ===================== */
+function render(){
+
+    let body = document.getElementById("body");
+    body.innerHTML = "";
+
+    let total=0, online=0, offline=0;
+
+    devices.forEach(d => {
+
+        total++;
+
+        if(d.status === "UP") online++;
+        else offline++;
+
+        let row = document.createElement("tr");
+
+        row.innerHTML = `
+        <td>${d.ip}</td>
+        <td class="${d.status=='UP'?'up':'down'}">${d.status}</td>
+        <td>${d.hostname}</td>
+        <td>${d.os}</td>
+        <td><button class="btn" onclick="viewScreen('${d.ip}')">View</button></td>
+        `;
+
+        body.appendChild(row);
+    });
+
+    document.getElementById("total").innerText = total;
+    document.getElementById("online").innerText = online;
+    document.getElementById("offline").innerText = offline;
+    document.getElementById("time").innerText = new Date().toLocaleTimeString();
+}
+
+/* ===================== SCREEN ===================== */
+function viewScreen(ip){
+
+    document.getElementById("modal").style.display="flex";
+
+    document.getElementById("screenImg").src =
+        "http://192.168.1.204:8080/screens/" + "screen" + ".png?" + Date.now();
+}
+
+function closeModal(){
+    document.getElementById("modal").style.display="none";
+}
+
+/* ===================== AUTO SCREEN ===================== */
+function startScreens(){
+
+    setInterval(()=>{
+
+        devices.forEach(d=>{
+            viewScreen(d.ip);
+        });
+
+    },3000);
+}
+
+</script>
+
+</body>
+</html>
