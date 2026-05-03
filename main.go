@@ -9,6 +9,8 @@ import (
 func main() {
 	http.HandleFunc("/", handlers.Dashboard)
 	http.HandleFunc("/scan", handlers.ScanIp)
+	http.HandleFunc("/stream", handlers.RecvStream)
+	http.HandleFunc("/live", handlers.Streaming)
 	http.HandleFunc("/upload", handlers.UploadImg)
 	http.Handle("/screens/", http.StripPrefix("/screens/", http.FileServer(http.Dir("screens"))))
 	fmt.Println(`Server running at http://localhost:8080`)

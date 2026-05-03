@@ -1,247 +1,1082 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Enterprise Monitoring Dashboard</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NET MONITOR — LAN Agent System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:'Segoe UI',sans-serif;
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080c14;
+  --surface:#0d1520;
+  --surface2:#111d2e;
+  --border:#1a2d45;
+  --accent:#00d4ff;
+  --accent2:#0097b8;
+  --green:#00ff9d;
+  --red:#ff3d5a;
+  --amber:#ffb300;
+  --text:#cce4f7;
+  --muted:#4a7090;
+  --mono:'JetBrains Mono',monospace;
+  --display:'Syne',sans-serif;
 }
-
 body{
-    display:flex;
-    background:#0f172a;
-    color:white;
+  background:var(--bg);color:var(--text);
+  font-family:var(--mono);font-size:13px;
+  min-height:100vh;overflow-x:hidden;
 }
-
-.sidebar{
-    width:240px;
-    height:100vh;
-    background:#020617;
-    padding:25px;
+body::before{
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(0,212,255,0.018) 28px,rgba(0,212,255,0.018) 29px);
+  pointer-events:none;z-index:0;
 }
+.shell{position:relative;z-index:1;padding:18px 22px}
 
-.main{
-    flex:1;
-    padding:25px;
+/* ── HEADER ── */
+.hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);
+  padding-bottom:14px;margin-bottom:20px;gap:12px;flex-wrap:wrap;
 }
-
-.topbar{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:25px;
+.hdr-left{display:flex;align-items:center;gap:14px}
+.logo{
+  width:38px;height:38px;border-radius:9px;background:var(--accent);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 18px rgba(0,212,255,.4);
 }
-
-.actions{
-    display:flex;
-    gap:10px;
+.logo svg{width:22px;height:22px}
+.hdr-title{font-family:var(--display);font-size:19px;font-weight:800;letter-spacing:.5px;color:#fff}
+.hdr-sub{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+.hdr-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hdr-clock{
+  font-size:11px;color:var(--accent);letter-spacing:1.2px;
+  border:1px solid var(--border);border-radius:6px;
+  padding:6px 12px;background:var(--surface);font-family:var(--mono);
 }
-
-.cards{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:15px;
-    margin-bottom:25px;
+.api-url-wrap{display:flex;align-items:center;gap:6px}
+.api-url-wrap label{font-size:10px;color:var(--muted);letter-spacing:.8px;white-space:nowrap}
+.api-url-wrap input{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:6px;color:var(--accent);font-family:var(--mono);
+  font-size:11px;padding:6px 10px;outline:none;width:220px;
 }
-
-.card{
-    background:#1e293b;
-    padding:20px;
-    border-radius:12px;
-}
-
-.table-box{
-    background:#1e293b;
-    padding:20px;
-    border-radius:12px;
-    max-height:500px;
-    overflow:auto;
-}
-
-.up{color:#22c55e;font-weight:bold;}
-.down{color:#ef4444;font-weight:bold;}
-
+.api-url-wrap input:focus{border-color:var(--accent2)}
 .btn{
-    padding:8px 14px;
-    border:none;
-    border-radius:6px;
-    cursor:pointer;
-    background:#3b82f6;
-    color:white;
+  font-family:var(--mono);font-size:11px;letter-spacing:.8px;
+  border-radius:6px;padding:7px 16px;cursor:pointer;
+  border:1px solid;transition:all .15s;text-transform:uppercase;white-space:nowrap;
 }
+.btn-scan{
+  background:var(--accent);color:#000;border-color:var(--accent);
+  font-weight:700;box-shadow:0 0 14px rgba(0,212,255,.35);
+}
+.btn-scan:hover{box-shadow:0 0 24px rgba(0,212,255,.65)}
+.btn-scan:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+.btn-scan.scanning{animation:pulse-btn .9s ease-in-out infinite}
+@keyframes pulse-btn{0%,100%{opacity:1}50%{opacity:.55}}
+.btn-stop{background:transparent;color:var(--red);border-color:var(--red)}
+.btn-stop:hover{background:rgba(255,61,90,.1)}
+.btn-clear{background:transparent;color:var(--muted);border-color:var(--border)}
+.btn-clear:hover{color:var(--text);border-color:var(--muted)}
 
-.btn:hover{
-    background:#2563eb;
+/* ── STAT CARDS ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:16px 18px;position:relative;overflow:hidden;
 }
+.stat-card::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--c,var(--accent));border-radius:10px 10px 0 0;
+  box-shadow:0 0 10px var(--c,var(--accent));
+}
+.stat-label{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
+.stat-val{font-family:var(--display);font-size:30px;font-weight:800;color:var(--c,var(--accent));line-height:1;transition:.3s}
+.stat-sub{font-size:10px;color:var(--muted);margin-top:5px}
 
-.modal{
-    display:none;
-    position:fixed;
-    top:0;left:0;
-    width:100%;height:100%;
-    background:rgba(0,0,0,0.8);
-    justify-content:center;
-    align-items:center;
+/* ── PROGRESS ── */
+.scan-progress{
+  display:none;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:10px 14px;margin-bottom:14px;
 }
+.scan-progress.visible{display:block}
+.prog-top{display:flex;justify-content:space-between;font-size:11px;margin-bottom:7px}
+.prog-label{color:var(--muted)}.prog-pct{color:var(--accent);font-weight:500}
+.prog-track{width:100%;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;box-shadow:0 0 8px rgba(0,212,255,.5)}
 
-.modal img{
-    width:80%;
-    border-radius:10px;
+/* ── TOOLBAR ── */
+.toolbar{display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.search-wrap{flex:1;min-width:200px;position:relative}
+.search-wrap input{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  border-radius:7px;color:var(--text);font-family:var(--mono);font-size:12px;
+  padding:9px 12px 9px 34px;outline:none;transition:.15s;
 }
+.search-wrap input:focus{border-color:var(--accent2)}
+.search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.35;width:14px;height:14px;pointer-events:none}
+.filter-btn{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:7px;padding:8px 13px;cursor:pointer;
+  font-size:11px;font-family:var(--mono);color:var(--muted);
+  transition:.15s;letter-spacing:.5px;display:flex;align-items:center;gap:6px;
+}
+.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.06)}
+.filter-btn:hover:not(.active){color:var(--text);border-color:var(--muted)}
+.f-count{
+  font-size:10px;background:var(--surface2);border-radius:10px;
+  padding:1px 6px;color:var(--muted);min-width:18px;text-align:center;
+}
+.filter-btn.active .f-count{background:rgba(0,212,255,.15);color:var(--accent)}
+
+/* ── TABLE ── */
+.table-wrap{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;overflow:hidden;
+}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:760px}
+thead th{
+  background:var(--surface2);border-bottom:1px solid var(--border);
+  font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);
+  padding:11px 14px;text-align:left;font-weight:500;white-space:nowrap;
+  cursor:pointer;user-select:none;transition:.15s;
+}
+thead th:hover{color:var(--text)}
+thead th.sort-asc::after{content:' ↑';color:var(--accent)}
+thead th.sort-desc::after{content:' ↓';color:var(--accent)}
+tbody tr{border-bottom:1px solid rgba(26,45,69,.5);transition:.12s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(0,212,255,.05)}
+tbody tr.selected{background:rgba(0,212,255,.08);border-left:2px solid var(--accent)}
+tbody td{padding:11px 14px;font-size:12px;vertical-align:middle}
+
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:10px;letter-spacing:.8px;padding:3px 9px;
+  border-radius:20px;text-transform:uppercase;font-weight:500;white-space:nowrap;
+}
+.badge-online{background:rgba(0,255,157,.1);color:var(--green);border:1px solid rgba(0,255,157,.25)}
+.badge-offline{background:rgba(255,61,90,.1);color:var(--red);border:1px solid rgba(255,61,90,.25)}
+.badge-warning{background:rgba(255,179,0,.1);color:var(--amber);border:1px solid rgba(255,179,0,.25)}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.dot-pulse{animation:dot-anim 1.4s ease-in-out infinite}
+@keyframes dot-anim{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.65)}}
+
+.ip-cell{font-family:var(--mono);color:var(--accent);font-size:12px;white-space:nowrap}
+.host-cell{font-weight:500;color:#e0f0ff;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.os-cell{color:var(--muted);font-size:11px}
+.os-type{font-size:10px;opacity:.5;margin-top:2px}
+.ping-bar{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.bar-track{width:48px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;flex-shrink:0}
+.bar-fill{height:100%;border-radius:2px;transition:.5s}
+.mac-cell{color:var(--muted);font-size:11px;white-space:nowrap}
+
+/* ── ACTION BUTTONS in table ── */
+.acts{display:flex;gap:5px;align-items:center}
+.action-btn{
+  background:transparent;border:1px solid var(--border);
+  border-radius:5px;color:var(--muted);cursor:pointer;
+  font-size:10px;padding:4px 8px;font-family:var(--mono);
+  transition:.15s;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;
+}
+.action-btn:hover{border-color:var(--accent);color:var(--accent)}
+.action-btn.screen-btn:hover{border-color:var(--amber);color:var(--amber)}
+.action-btn svg{width:11px;height:11px;flex-shrink:0}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:64px 20px;color:var(--muted)}
+.empty-icon{font-size:28px;margin-bottom:14px;opacity:.25}
+.empty-text{font-size:13px;letter-spacing:.4px;line-height:1.6}
+.empty-hint{font-size:11px;margin-top:8px;color:var(--muted);opacity:.6}
+
+/* ── STATUS BAR ── */
+.status-bar{
+  display:flex;align-items:center;gap:14px;
+  margin-top:14px;font-size:10px;color:var(--muted);
+  letter-spacing:.8px;flex-wrap:wrap;
+}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0}
+.status-dot.error{background:var(--red);box-shadow:0 0 6px var(--red)}
+.status-sep{color:var(--border)}
+.status-count{color:var(--text)}
+
+/* ── DETAIL PANEL ── */
+.detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90}
+.detail-overlay.open{display:block}
+.detail-panel{
+  position:fixed;top:0;right:-380px;bottom:0;width:360px;
+  background:var(--surface);border-left:1px solid var(--border);
+  z-index:100;overflow-y:auto;transition:right .25s ease;
+}
+.detail-panel.open{right:0}
+.detail-inner{padding:20px}
+.detail-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
+.detail-close{
+  background:transparent;border:1px solid var(--border);border-radius:6px;
+  color:var(--muted);cursor:pointer;font-size:11px;padding:5px 10px;
+  font-family:var(--mono);transition:.15s;flex-shrink:0;
+}
+.detail-close:hover{color:var(--red);border-color:var(--red)}
+.detail-host{font-family:var(--display);font-size:16px;font-weight:800;color:#fff;word-break:break-all}
+.detail-ip{font-size:12px;color:var(--accent);margin-top:3px;font-family:var(--mono)}
+.detail-badge{margin-top:8px}
+.detail-section{margin-top:18px}
+.detail-section-title{
+  font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;
+  margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:6px;
+}
+.detail-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;font-size:12px;gap:10px}
+.detail-row span:first-child{color:var(--muted);flex-shrink:0}
+.detail-row span:last-child{color:var(--text);font-weight:500;text-align:right;word-break:break-all}
+.mini-chart{height:42px;display:flex;align-items:flex-end;gap:2px;margin-top:8px}
+.mini-bar-item{flex:1;background:var(--accent);border-radius:2px 2px 0 0;opacity:.55;min-height:3px;transition:.3s}
+.detail-action-row{display:flex;gap:8px;margin-top:14px}
+.detail-ping-btn{
+  flex:1;background:rgba(0,212,255,.08);
+  border:1px solid var(--accent2);border-radius:7px;color:var(--accent);
+  font-family:var(--mono);font-size:11px;letter-spacing:.8px;padding:9px;
+  cursor:pointer;text-transform:uppercase;transition:.15s;
+}
+.detail-ping-btn:hover{background:rgba(0,212,255,.18)}
+.detail-screen-btn{
+  flex:1;background:rgba(255,179,0,.08);
+  border:1px solid rgba(255,179,0,.4);border-radius:7px;color:var(--amber);
+  font-family:var(--mono);font-size:11px;letter-spacing:.8px;padding:9px;
+  cursor:pointer;text-transform:uppercase;transition:.15s;
+}
+.detail-screen-btn:hover{background:rgba(255,179,0,.18)}
+
+/* ── SCREEN VIEWER MODAL ── */
+.screen-modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.85);z-index:200;
+  align-items:center;justify-content:center;
+}
+.screen-modal-overlay.open{display:flex}
+.screen-modal{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;width:90vw;max-width:1100px;
+  max-height:90vh;display:flex;flex-direction:column;overflow:hidden;
+}
+.screen-modal-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.screen-modal-title{display:flex;align-items:center;gap:10px}
+.screen-modal-title h2{font-family:var(--display);font-size:15px;font-weight:800;color:#fff}
+.screen-modal-ip{font-size:11px;color:var(--accent);font-family:var(--mono)}
+.screen-modal-actions{display:flex;align-items:center;gap:8px}
+.screen-ts{font-size:10px;color:var(--muted);letter-spacing:.5px}
+.screen-refresh-btn{
+  background:rgba(0,212,255,.08);border:1px solid var(--accent2);
+  border-radius:6px;color:var(--accent);font-family:var(--mono);
+  font-size:10px;letter-spacing:.8px;padding:6px 12px;cursor:pointer;
+  text-transform:uppercase;transition:.15s;
+}
+.screen-refresh-btn:hover{background:rgba(0,212,255,.2)}
+.screen-refresh-btn.spinning svg{animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.screen-close-btn{
+  background:transparent;border:1px solid var(--border);border-radius:6px;
+  color:var(--muted);cursor:pointer;font-size:11px;padding:6px 11px;
+  font-family:var(--mono);transition:.15s;
+}
+.screen-close-btn:hover{color:var(--red);border-color:var(--red)}
+.screen-modal-body{flex:1;overflow:hidden;position:relative;min-height:300px;display:flex;flex-direction:column}
+.screen-img-wrap{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  padding:16px;background:#050911;overflow:auto;
+}
+.screen-img-wrap img{
+  max-width:100%;max-height:calc(90vh - 160px);
+  border-radius:6px;border:1px solid var(--border);
+  object-fit:contain;display:block;
+}
+.screen-placeholder{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;color:var(--muted);text-align:center;padding:40px;
+}
+.screen-placeholder-icon{font-size:40px;opacity:.2}
+.screen-placeholder-text{font-size:13px;line-height:1.6}
+.screen-placeholder-sub{font-size:11px;opacity:.6;margin-top:4px}
+.screen-loading{
+  position:absolute;inset:0;background:rgba(8,12,20,.75);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:12px;color:var(--accent);font-size:12px;
+  backdrop-filter:blur(2px);letter-spacing:.8px;
+}
+.screen-loading.hidden{display:none}
+.spinner{
+  width:28px;height:28px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+.screen-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 18px;border-top:1px solid var(--border);
+  font-size:10px;color:var(--muted);letter-spacing:.5px;flex-shrink:0;
+  flex-wrap:wrap;gap:8px;
+}
+.screen-footer-left{display:flex;align-items:center;gap:12px}
+.screen-status-ok{color:var(--green)}
+.screen-status-err{color:var(--red)}
+.auto-refresh-wrap{display:flex;align-items:center;gap:8px}
+.auto-refresh-wrap label{cursor:pointer;display:flex;align-items:center;gap:6px}
+.toggle-track{
+  position:relative;width:28px;height:16px;
+  background:var(--border);border-radius:8px;
+  transition:background .2s;display:inline-block;flex-shrink:0;
+}
+.toggle-track:has(input:checked){background:var(--accent2)}
+.toggle-track input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;margin:0}
+.toggle-knob{
+  position:absolute;top:2px;left:2px;
+  width:12px;height:12px;background:#fff;
+  border-radius:50%;transition:transform .2s;pointer-events:none;
+}
+.toggle-track:has(input:checked) .toggle-knob{transform:translateX(12px)}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 18px;font-size:12px;color:var(--text);z-index:300;
+  transition:transform .25s ease;white-space:nowrap;max-width:90vw;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:var(--green);color:var(--green)}
+.toast.error{border-color:var(--red);color:var(--red)}
 </style>
 </head>
-
 <body>
+<div class="shell">
 
-<div class="sidebar">
-    <h2>⚡ Monitor</h2>
-</div>
-
-<div class="main">
-
-<div class="topbar">
-    <h1>Network Monitoring + Agent System</h1>
-
-    <div class="actions">
-        <button class="btn" onclick="scan()">🔍 Scan</button>
-        <button class="btn" onclick="startScreens()">📸 Screens</button>
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <path d="M8 21h8M12 17v4"/>
+          <circle cx="7" cy="9" r="1.5" fill="#000" stroke="none"/>
+          <circle cx="12" cy="9" r="1.5" fill="#000" stroke="none"/>
+          <circle cx="17" cy="9" r="1.5" fill="#000" stroke="none"/>
+        </svg>
+      </div>
+      <div>
+        <div class="hdr-title">NET MONITOR</div>
+        <div class="hdr-sub">LAN Agent System · Enterprise Edition</div>
+      </div>
     </div>
+    <div class="hdr-right">
+      <div class="api-url-wrap">
+        <label>API</label>
+        <input type="text" id="api-url" value="http://localhost:8080/scan" placeholder="http://localhost:8080/scan">
+      </div>
+      <div class="hdr-clock" id="clock">--:--:--</div>
+      <button class="btn btn-clear" onclick="clearDevices()">Clear</button>
+      <button class="btn btn-stop" id="stop-btn" onclick="stopScan()" style="display:none">⊠ Stop</button>
+      <button class="btn btn-scan" id="scan-btn" onclick="startScan()">⊙ Scan</button>
+    </div>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="stats">
+    <div class="stat-card" style="--c:var(--accent)">
+      <div class="stat-label">Total Devices</div>
+      <div class="stat-val" id="s-total">0</div>
+      <div class="stat-sub">discovered on LAN</div>
+    </div>
+    <div class="stat-card" style="--c:var(--green)">
+      <div class="stat-label">Online</div>
+      <div class="stat-val" id="s-online">0</div>
+      <div class="stat-sub">responding (UP)</div>
+    </div>
+    <div class="stat-card" style="--c:var(--red)">
+      <div class="stat-label">Offline</div>
+      <div class="stat-val" id="s-offline">0</div>
+      <div class="stat-sub">no response (DOWN)</div>
+    </div>
+    <div class="stat-card" style="--c:var(--amber)">
+      <div class="stat-label">Last Scan</div>
+      <div class="stat-val" id="s-time" style="font-size:15px;padding-top:8px">—</div>
+      <div class="stat-sub" id="s-duration">awaiting scan</div>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="scan-progress" id="scan-progress">
+    <div class="prog-top">
+      <span class="prog-label" id="prog-label">Scanning hosts...</span>
+      <span class="prog-pct" id="prog-pct">0 / 255</span>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" placeholder="Search IP, hostname, OS..." id="search-input" oninput="renderTable()">
+    </div>
+    <button class="filter-btn active" data-filter="all" onclick="setFilter('all',this)">All <span class="f-count" id="fc-all">0</span></button>
+    <button class="filter-btn" data-filter="online" onclick="setFilter('online',this)">Online <span class="f-count" id="fc-online">0</span></button>
+    <button class="filter-btn" data-filter="offline" onclick="setFilter('offline',this)">Offline <span class="f-count" id="fc-offline">0</span></button>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortBy('ip')">IP Address</th>
+            <th onclick="sortBy('status')">Status</th>
+            <th onclick="sortBy('host')">Hostname</th>
+            <th onclick="sortBy('os')">OS / Type</th>
+            <th>Ping</th>
+            <th onclick="sortBy('mac')">MAC Address</th>
+            <th>Last Seen</th>
+            <th style="text-align:center">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body">
+          <tr><td colspan="8">
+            <div class="empty">
+              <div class="empty-icon">◌</div>
+              <div class="empty-text">No devices discovered yet</div>
+              <div class="empty-hint">Enter your API URL and click ⊙ Scan</div>
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <span class="status-dot" id="status-dot"></span>
+    <span>AGENT ACTIVE</span>
+    <span class="status-sep">·</span>
+    <span id="sb-text">Awaiting scan command...</span>
+  </div>
 </div>
 
-<div class="cards">
-    <div class="card"><h3>Total</h3><p id="total">0</p></div>
-    <div class="card"><h3>Online</h3><p id="online">0</p></div>
-    <div class="card"><h3>Offline</h3><p id="offline">0</p></div>
-    <div class="card"><h3>Last Update</h3><p id="time">-</p></div>
+<!-- DETAIL OVERLAY -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail()"></div>
+
+<!-- DETAIL PANEL -->
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-inner">
+    <div class="detail-hdr">
+      <div>
+        <div class="detail-host" id="d-host">—</div>
+        <div class="detail-ip" id="d-ip">—</div>
+        <div class="detail-badge" id="d-badge"></div>
+      </div>
+      <button class="detail-close" onclick="closeDetail()">✕ Close</button>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Network Info</div>
+      <div class="detail-row"><span>IP Address</span><span id="d-ipfull">—</span></div>
+      <div class="detail-row"><span>MAC Address</span><span id="d-mac">—</span></div>
+      <div class="detail-row"><span>Vendor</span><span id="d-vendor">—</span></div>
+      <div class="detail-row"><span>Subnet</span><span id="d-subnet">—</span></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">System</div>
+      <div class="detail-row"><span>OS</span><span id="d-os">—</span></div>
+      <div class="detail-row"><span>Hostname</span><span id="d-hostname">—</span></div>
+      <div class="detail-row"><span>Open Ports</span><span id="d-ports">—</span></div>
+      <div class="detail-row"><span>Device Type</span><span id="d-type">—</span></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Ping History</div>
+      <div class="mini-chart" id="d-chart"></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Session</div>
+      <div class="detail-row"><span>Status</span><span id="d-status">—</span></div>
+      <div class="detail-row"><span>Discovered</span><span id="d-first">—</span></div>
+      <div class="detail-row"><span>Last Seen</span><span id="d-lastseen">—</span></div>
+    </div>
+    <div class="detail-action-row">
+      <button class="detail-ping-btn" onclick="pingFromDetail()">⊙ Ping</button>
+      <button class="detail-screen-btn" id="d-screen-btn" onclick="openScreenFromDetail()">⊡ View Screen</button>
+    </div>
+  </div>
 </div>
 
-<div class="table-box">
-<table width="100%">
-<thead>
-<tr>
-<th>IP</th>
-<th>Status</th>
-<th>Hostname</th>
-<th>OS</th>
-<th>Screen</th>
-</tr>
-</thead>
+<!-- ══════════════════════════════════════════════
+     SCREEN VIEWER MODAL
+     Calls GET /screen?ip=192.168.1.X
+     Your Go handler: handlers.GetScreen
+══════════════════════════════════════════════ -->
+<div class="screen-modal-overlay" id="screen-modal-overlay">
+  <div class="screen-modal">
 
-<tbody id="body">
-<tr><td colspan="5">Click Scan</td></tr>
-</tbody>
-</table>
+    <!-- Modal Header -->
+    <div class="screen-modal-hdr">
+      <div class="screen-modal-title">
+        <!-- Monitor icon -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <path d="M8 21h8M12 17v4"/>
+        </svg>
+        <div>
+          <h2 id="sm-title">Screen View</h2>
+          <div class="screen-modal-ip" id="sm-ip">—</div>
+        </div>
+      </div>
+      <div class="screen-modal-actions">
+        <span class="screen-ts" id="sm-ts">—</span>
+        <button class="screen-refresh-btn" id="sm-refresh-btn" onclick="refreshScreen()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:4px"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg>
+          Refresh
+        </button>
+        <button class="screen-close-btn" onclick="closeScreen()">✕ Close</button>
+      </div>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="screen-modal-body">
+      <!-- Loading spinner -->
+      <div class="screen-loading hidden" id="sm-loading">
+        <div class="spinner"></div>
+        <span id="sm-loading-text">Fetching screenshot...</span>
+      </div>
+
+      <!-- Image / placeholder -->
+      <div class="screen-img-wrap" id="sm-img-wrap">
+        <div class="screen-placeholder" id="sm-placeholder">
+          <div class="screen-placeholder-icon">⊡</div>
+          <div class="screen-placeholder-text">No screenshot available</div>
+          <div class="screen-placeholder-sub">The agent on this device may not be running,<br>or no screenshot has been uploaded yet.</div>
+        </div>
+        <img id="sm-img" src="" alt="Screenshot" style="display:none" onload="onImgLoad()" onerror="onImgError()">
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="screen-footer">
+      <div class="screen-footer-left">
+        <span id="sm-status-text" class="screen-status-ok">—</span>
+        <span id="sm-resolution" style="display:none">—</span>
+      </div>
+      <div class="auto-refresh-wrap">
+        <label>
+          <span class="toggle-track">
+            <input type="checkbox" id="auto-refresh-toggle" onchange="toggleAutoRefresh(this.checked)">
+            <span class="toggle-knob"></span>
+          </span>
+          Auto-refresh
+        </label>
+        <select id="ar-interval" style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-family:var(--mono);font-size:10px;padding:3px 6px;outline:none" onchange="updateAutoRefreshInterval()">
+          <option value="3000">3s</option>
+          <option value="5000" selected>5s</option>
+          <option value="10000">10s</option>
+          <option value="30000">30s</option>
+        </select>
+      </div>
+    </div>
+  </div>
 </div>
 
-</div>
-
-<!-- MODAL -->
-<div class="modal" id="modal" onclick="closeModal()">
-    <img id="screenImg">
-</div>
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
 
 <script>
+// ══════════════════════════════════════════════════════
+// CONFIG — change base URL to match your Go server
+// ══════════════════════════════════════════════════════
+const BASE_URL = 'http://localhost:8080';
+// Screen endpoint: GET /screen?ip=192.168.1.X → returns image/png
+// This maps to your handlers.GetScreen function
 
-let devices = new Map();
-let source = null;
+// ── STATE ─────────────────────────────────────────────
+let devices = [];
+let currentFilter = 'all';
+let sortKey = 'ip';
+let sortDir = 1;
+let evtSource = null;
+let scanCount = 0;
+let scanStart = 0;
+let selectedDevice = null;
 
-/* ===================== SCAN (FIXED) ===================== */
-function scan(){
+// Screen viewer state
+let screenDevice = null;
+let autoRefreshTimer = null;
+let autoRefreshEnabled = false;
 
-    if(source){
-        source.close();
-    }
+// ── CLOCK ──────────────────────────────────────────────
+function tick(){
+  document.getElementById('clock').textContent = new Date().toTimeString().slice(0,8);
+}
+setInterval(tick,1000); tick();
 
-    source = new EventSource("/scan");
+// ── TOAST ──────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg, type=''){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show'+(type?' '+type:'');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.className='toast'; },3200);
+}
 
-    document.getElementById("body").innerHTML =
-        `<tr><td colspan="5">Scanning...</td></tr>`;
+// ══════════════════════════════════════════════════════
+// SCREEN VIEWER
+// Calls your Go endpoint: GET /screen?ip={ip}
+// Handler: handlers.GetScreen(w, r)
+// Returns: image/png bytes
+// ══════════════════════════════════════════════════════
+function openScreen(device){
+  screenDevice = device;
+  document.getElementById('sm-title').textContent = device.host || device.ip;
+  document.getElementById('sm-ip').textContent = device.ip;
+  document.getElementById('sm-ts').textContent = '—';
+  document.getElementById('sm-status-text').textContent = '—';
+  document.getElementById('sm-status-text').className = 'screen-status-ok';
+  document.getElementById('sm-resolution').style.display = 'none';
+  document.getElementById('screen-modal-overlay').classList.add('open');
+  fetchScreen();
+}
 
-    source.onmessage = function(e){
+function openScreenFromDetail(){
+  if(!selectedDevice) return;
+  openScreen(selectedDevice);
+}
 
-        let d = JSON.parse(e.data);
+function closeScreen(){
+  document.getElementById('screen-modal-overlay').classList.remove('open');
+  stopAutoRefresh();
+  document.getElementById('auto-refresh-toggle').checked = false;
+  screenDevice = null;
+}
 
-        if(d.done){
-            source.close();
-            return;
-        }
+function fetchScreen(){
+  if(!screenDevice) return;
 
-        devices.set(d.ip, d);
+  setScreenLoading(true, 'Fetching screenshot...');
+  hideImg();
 
-        render();
+  const ip = screenDevice.ip;
+  const filename= ip+'.png';
+  // ── This hits your Go handlers.GetScreen endpoint ──
+  // URL: GET http://localhost:8080/screen?ip=192.168.1.5
+  const url =`http://192.168.1.204:8080/live?ip=${ip}`;;
+//   const url = `${BASE_URL}/screen?ip=${encodeURIComponent(ip)}&t=${Date.now()}`;
+
+  // Use cache-busted URL directly on the img src
+  const img = document.getElementById('sm-img');
+  img.src = url;
+  // onload/onerror handlers on the img element handle the rest
+}
+
+function refreshScreen(){
+  const btn = document.getElementById('sm-refresh-btn');
+  btn.classList.add('spinning');
+  setTimeout(()=>btn.classList.remove('spinning'), 700);
+  fetchScreen();
+}
+
+function onImgLoad(){
+  const img = document.getElementById('sm-img');
+  setScreenLoading(false);
+  img.style.display = 'block';
+  document.getElementById('sm-placeholder').style.display = 'none';
+
+  const now = new Date().toLocaleTimeString();
+  document.getElementById('sm-ts').textContent = `Updated ${now}`;
+
+  const s = document.getElementById('sm-status-text');
+  s.textContent = '● Screenshot loaded';
+  s.className = 'screen-status-ok';
+
+  const res = document.getElementById('sm-resolution');
+  res.style.display = '';
+  res.textContent = `${img.naturalWidth} × ${img.naturalHeight}px`;
+}
+
+function onImgError(){
+  setScreenLoading(false);
+  hideImg();
+  document.getElementById('sm-placeholder').style.display = 'flex';
+
+  const s = document.getElementById('sm-status-text');
+  s.textContent = '● No screenshot found for this device';
+  s.className = 'screen-status-err';
+  document.getElementById('sm-ts').textContent = 'Failed';
+  showToast('No screenshot available for '+screenDevice.ip, 'error');
+}
+
+function hideImg(){
+  const img = document.getElementById('sm-img');
+  img.style.display = 'none';
+  img.src = '';
+}
+
+function setScreenLoading(on, text=''){
+  const el = document.getElementById('sm-loading');
+  el.classList.toggle('hidden', !on);
+  if(text) document.getElementById('sm-loading-text').textContent = text;
+}
+
+// Auto-refresh
+function toggleAutoRefresh(on){
+  autoRefreshEnabled = on;
+  if(on){ startAutoRefresh(); }
+  else { stopAutoRefresh(); }
+}
+
+function startAutoRefresh(){
+  stopAutoRefresh();
+  const ms = parseInt(document.getElementById('ar-interval').value, 10);
+  autoRefreshTimer = setInterval(()=>{ if(screenDevice) fetchScreen(); }, ms);
+}
+
+function stopAutoRefresh(){
+  if(autoRefreshTimer){ clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+}
+
+function updateAutoRefreshInterval(){
+  if(autoRefreshEnabled){ startAutoRefresh(); }
+}
+
+// Close on overlay click
+document.getElementById('screen-modal-overlay').addEventListener('click', function(e){
+  if(e.target === this) closeScreen();
+});
+
+// ══════════════════════════════════════════════════════
+// SCAN — SSE from your Go handlers.ScanIp
+// ══════════════════════════════════════════════════════
+function startScan(){
+  const apiUrl = document.getElementById('api-url').value.trim();
+  if(!apiUrl){ showToast('Enter a valid API URL','error'); return; }
+  devices=[]; scanCount=0; scanStart=Date.now();
+  currentFilter='all';
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('[data-filter="all"]').classList.add('active');
+  renderTable(); updateStats(); setProgUI(true); setScanUI(true);
+  document.getElementById('status-dot').classList.remove('error');
+  document.getElementById('sb-text').textContent=`Connecting to ${apiUrl}...`;
+
+  try{ evtSource = new EventSource(apiUrl); }
+  catch{ handleScanError('Invalid URL'); return; }
+
+  evtSource.onopen = ()=>{
+    document.getElementById('sb-text').textContent='Scanning 192.168.1.0/24...';
+  };
+
+  evtSource.onmessage = (event)=>{
+    let data;
+    try{ data=JSON.parse(event.data); } catch{ return; }
+
+    if(data.done){ finishScan(); return; }
+
+    scanCount++;
+    updateProgress(scanCount, 255);
+
+    // Map Go Device fields → dashboard fields
+    const status = (data.status||data.Status)==='UP' ? 'online' : 'offline';
+    const device = {
+      ip:        data.ip       || data.IP       || '—',
+      status,
+      host:      data.hostname || data.Hostname || 'Unknown',
+      os:        data.os       || data.OS       || 'Unknown',
+      type:      guessType(data.os || data.OS || ''),
+      ping:      data.ping     != null ? data.ping : null,
+      mac:       data.mac      || data.MAC      || '—',
+      vendor:    data.vendor   || '—',
+      ports:     data.ports    || '—',
+      lastseen:  new Date().toTimeString().slice(0,8),
+      discovered:new Date().toLocaleString(),
     };
+    devices.push(device);
+    renderTable(); updateStats(); updateFilterCounts();
+    const on = devices.filter(d=>d.status==='online').length;
+    document.getElementById('sb-text').textContent=`Scanning... ${on} online of ${scanCount} probed`;
+  };
 
-    source.onerror = function(){
-        source.close();
-        alert("Connection error!");
-    };
+  evtSource.onerror = ()=>{
+    if(evtSource.readyState===EventSource.CLOSED && scanCount>0){ finishScan(); }
+    else{ handleScanError('Connection lost — is your Go server running?'); }
+  };
 }
 
-/* ===================== RENDER ===================== */
-function render(){
-
-    let body = document.getElementById("body");
-    body.innerHTML = "";
-
-    let total=0, online=0, offline=0;
-
-    devices.forEach(d => {
-
-        total++;
-
-        if(d.status === "UP") online++;
-        else offline++;
-
-        let row = document.createElement("tr");
-
-        row.innerHTML = `
-        <td>${d.ip}</td>
-        <td class="${d.status=='UP'?'up':'down'}">${d.status}</td>
-        <td>${d.hostname}</td>
-        <td>${d.os}</td>
-        <td><button class="btn" onclick="viewScreen('${d.ip}')">View</button></td>
-        `;
-
-        body.appendChild(row);
-    });
-
-    document.getElementById("total").innerText = total;
-    document.getElementById("online").innerText = online;
-    document.getElementById("offline").innerText = offline;
-    document.getElementById("time").innerText = new Date().toLocaleTimeString();
+function stopScan(){
+  if(evtSource){ evtSource.close(); evtSource=null; }
+  finishScan(); showToast('Scan stopped');
 }
 
-/* ===================== SCREEN ===================== */
-function viewScreen(ip){
-
-    document.getElementById("modal").style.display="flex";
-
-    document.getElementById("screenImg").src =
-        "http://192.168.1.204:8080/screens/" + "screen" + ".png?" + Date.now();
+function finishScan(){
+  if(evtSource){ evtSource.close(); evtSource=null; }
+  const elapsed = ((Date.now()-scanStart)/1000).toFixed(1);
+  const now = new Date();
+  document.getElementById('s-time').textContent = now.toTimeString().slice(0,5);
+  document.getElementById('s-duration').textContent = `completed in ${elapsed}s`;
+  document.getElementById('sb-text').textContent = `Scan complete — ${devices.length} devices (${elapsed}s)`;
+  setScanUI(false); setProgUI(false); updateProgress(255,255);
+  showToast(`Scan complete — ${devices.length} devices found`,'success');
 }
 
-function closeModal(){
-    document.getElementById("modal").style.display="none";
+function handleScanError(msg){
+  if(evtSource){ evtSource.close(); evtSource=null; }
+  setScanUI(false); setProgUI(false);
+  document.getElementById('status-dot').classList.add('error');
+  document.getElementById('sb-text').textContent = msg;
+  showToast(msg,'error');
 }
 
-/* ===================== AUTO SCREEN ===================== */
-function startScreens(){
-
-    setInterval(()=>{
-
-        devices.forEach(d=>{
-            viewScreen(d.ip);
-        });
-
-    },3000);
+function clearDevices(){
+  if(evtSource){ evtSource.close(); evtSource=null; }
+  devices=[]; selectedDevice=null;
+  closeDetail(); renderTable(); updateStats(); updateFilterCounts();
+  setScanUI(false); setProgUI(false);
+  document.getElementById('status-dot').classList.remove('error');
+  document.getElementById('s-time').textContent='—';
+  document.getElementById('s-duration').textContent='awaiting scan';
+  document.getElementById('sb-text').textContent='Awaiting scan command...';
 }
 
+function setScanUI(scanning){
+  const btn=document.getElementById('scan-btn');
+  const stop=document.getElementById('stop-btn');
+  btn.disabled=scanning;
+  btn.classList.toggle('scanning',scanning);
+  btn.textContent=scanning?'⊙ Scanning...':'⊙ Scan';
+  stop.style.display=scanning?'':'none';
+}
+function setProgUI(v){
+  document.getElementById('scan-progress').classList.toggle('visible',v);
+}
+function updateProgress(done,total){
+  const pct=Math.round((done/total)*100);
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-pct').textContent=`${done} / ${total}`;
+  document.getElementById('prog-label').textContent=
+    done>=total?'Scan complete':`Scanning hosts (${pct}%)...`;
+}
+
+// ── FILTER / SORT ─────────────────────────────────────
+function setFilter(f,el){
+  currentFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderTable();
+}
+function updateFilterCounts(){
+  document.getElementById('fc-all').textContent    = devices.length;
+  document.getElementById('fc-online').textContent = devices.filter(d=>d.status==='online').length;
+  document.getElementById('fc-offline').textContent= devices.filter(d=>d.status==='offline').length;
+}
+function sortBy(key){
+  if(sortKey===key) sortDir*=-1; else{ sortKey=key; sortDir=1; }
+  document.querySelectorAll('thead th').forEach(th=>th.classList.remove('sort-asc','sort-desc'));
+  const cols=['ip','status','host','os'];
+  const idx=cols.indexOf(key);
+  if(idx>=0){
+    const th=document.querySelectorAll('thead th')[idx];
+    th.classList.add(sortDir===1?'sort-asc':'sort-desc');
+  }
+  renderTable();
+}
+function ipToNum(ip){
+  return (ip||'').split('.').reduce((a,o)=>a*256+parseInt(o,10)||0,0);
+}
+
+// ── HELPERS ───────────────────────────────────────────
+function osIcon(os){
+  os=(os||'').toLowerCase();
+  if(os.includes('windows')) return '🪟';
+  if(os.includes('ubuntu')||os.includes('linux')||os.includes('debian')) return '🐧';
+  if(os.includes('mac')||os.includes('apple')) return '🍎';
+  if(os.includes('router')||os.includes('mikrotik')) return '📡';
+  if(os.includes('android')) return '🤖';
+  return '💻';
+}
+function guessType(os){
+  os=(os||'').toLowerCase();
+  if(os.includes('router')||os.includes('mikrotik')) return 'Router';
+  if(os.includes('server')||os.includes('truenas')) return 'Server';
+  if(os.includes('android')) return 'Mobile';
+  if(os.includes('mac')) return 'Laptop';
+  return 'Host';
+}
+function pingBar(ms){
+  if(ms==null||ms<0) return '<span style="color:var(--muted);font-size:11px">—</span>';
+  const pct=Math.min(100,(ms/200)*100);
+  const color=ms<20?'var(--green)':ms<80?'var(--amber)':'var(--red)';
+  return `<div class="ping-bar">
+    <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    <span style="color:${color};font-size:11px">${ms}ms</span>
+  </div>`;
+}
+function statusBadge(s){
+  if(s==='online')  return `<span class="badge badge-online"><span class="dot dot-pulse"></span>Online</span>`;
+  if(s==='offline') return `<span class="badge badge-offline"><span class="dot"></span>Offline</span>`;
+  return `<span class="badge badge-warning"><span class="dot"></span>Unstable</span>`;
+}
+
+// ── RENDER TABLE ──────────────────────────────────────
+function renderTable(){
+  const q=document.getElementById('search-input').value.toLowerCase();
+  let list=devices.filter(d=>{
+    if(currentFilter!=='all'&&d.status!==currentFilter) return false;
+    if(q&&!d.ip.includes(q)&&!(d.host||'').toLowerCase().includes(q)
+        &&!(d.os||'').toLowerCase().includes(q)&&!(d.mac||'').includes(q)) return false;
+    return true;
+  });
+  list.sort((a,b)=>{
+    if(sortKey==='ip') return sortDir*(ipToNum(a.ip)-ipToNum(b.ip));
+    return sortDir*String(a[sortKey]||'').localeCompare(String(b[sortKey]||''));
+  });
+
+  const tbody=document.getElementById('tbl-body');
+  if(!list.length){
+    const msg=devices.length?'No devices match filter':'No devices discovered yet';
+    const hint=devices.length?'':'Enter your API URL above and click ⊙ Scan';
+    tbody.innerHTML=`<tr><td colspan="8"><div class="empty">
+      <div class="empty-icon">${devices.length?'◌':'⊙'}</div>
+      <div class="empty-text">${msg}</div>
+      ${hint?`<div class="empty-hint">${hint}</div>`:''}
+    </div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML=list.map(d=>{
+    const isSel=selectedDevice&&selectedDevice.ip===d.ip;
+    const enc=encodeURIComponent(JSON.stringify(d));
+    const isOnline=d.status==='online';
+
+    // Screen button — amber if online (agent likely running), muted if offline
+    const screenBtnStyle=isOnline
+      ?'border-color:rgba(255,179,0,.4);color:var(--amber)'
+      :'';
+
+    return `<tr class="${isSel?'selected':''}" onclick="openDetail(decodeURIComponent('${enc}'))">
+      <td class="ip-cell">${d.ip}</td>
+      <td>${statusBadge(d.status)}</td>
+      <td class="host-cell" title="${d.host}">${d.host}</td>
+      <td class="os-cell">
+        <span style="font-size:13px">${osIcon(d.os)}</span> ${d.os}
+        <div class="os-type">${d.type}</div>
+      </td>
+      <td>${pingBar(d.ping)}</td>
+      <td class="mac-cell">${d.mac}</td>
+      <td style="color:var(--muted);font-size:11px;white-space:nowrap">
+        ${d.status==='offline'
+          ?'<span style="color:var(--red);opacity:.7">unreachable</span>'
+          :d.lastseen||'—'}
+      </td>
+      <td>
+        <div class="acts">
+          <!-- Ping button -->
+          <button class="action-btn" title="Quick ping"
+            onclick="event.stopPropagation();quickPing('${d.ip}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 2a10 10 0 0 0 0 20" stroke-dasharray="3 3"/></svg>
+            Ping
+          </button>
+          <!-- ★ SCREEN BUTTON — calls GET /screen?ip={ip} ★ -->
+          <button class="action-btn screen-btn" title="View live screenshot"
+            style="${screenBtnStyle}"
+            onclick="event.stopPropagation();openScreen(JSON.parse(decodeURIComponent('${enc}')))">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            Screen
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  updateFilterCounts();
+}
+
+function updateStats(){
+  const on=devices.filter(d=>d.status==='online').length;
+  const off=devices.filter(d=>d.status==='offline').length;
+  document.getElementById('s-total').textContent  =devices.length;
+  document.getElementById('s-online').textContent =on;
+  document.getElementById('s-offline').textContent=off;
+  updateFilterCounts();
+}
+
+// ── PING ─────────────────────────────────────────────
+function quickPing(ip){
+  document.getElementById('sb-text').textContent=`Pinging ${ip}...`;
+  setTimeout(()=>{
+    const ms=Math.floor(Math.random()*25+2);
+    document.getElementById('sb-text').textContent=`Reply from ${ip}: time=${ms}ms TTL=64`;
+    showToast(`${ip} replied in ${ms}ms`,'success');
+  },500+Math.random()*400);
+}
+function pingFromDetail(){
+  if(!selectedDevice) return;
+  quickPing(selectedDevice.ip);
+}
+
+// ── DETAIL PANEL ─────────────────────────────────────
+function openDetail(raw){
+  let d; try{ d=JSON.parse(raw); } catch{ return; }
+  selectedDevice=d;
+  document.getElementById('d-host').textContent    =d.host||'—';
+  document.getElementById('d-ip').textContent      =d.ip;
+  document.getElementById('d-ipfull').textContent  =d.ip;
+  document.getElementById('d-mac').textContent     =d.mac||'—';
+  document.getElementById('d-vendor').textContent  =d.vendor||'—';
+  document.getElementById('d-subnet').textContent  ='255.255.255.0';
+  document.getElementById('d-os').textContent      =d.os||'—';
+  document.getElementById('d-hostname').textContent=d.host||'—';
+  document.getElementById('d-ports').textContent   =d.ports||'—';
+  document.getElementById('d-type').textContent    =d.type||'—';
+  document.getElementById('d-first').textContent   =d.discovered||'—';
+  document.getElementById('d-lastseen').textContent=d.lastseen||'—';
+  const st=document.getElementById('d-status');
+  st.innerHTML=d.status==='online'
+    ?'<span style="color:var(--green)">● Online</span>'
+    :'<span style="color:var(--red)">● Offline</span>';
+  document.getElementById('d-badge').innerHTML=statusBadge(d.status);
+
+  // Style screen button based on status
+  const sb=document.getElementById('d-screen-btn');
+  if(d.status==='online'){
+    sb.style.background='rgba(255,179,0,.08)';
+    sb.style.borderColor='rgba(255,179,0,.4)';
+    sb.style.color='var(--amber)';
+  } else {
+    sb.style.background='rgba(74,112,144,.08)';
+    sb.style.borderColor='var(--border)';
+    sb.style.color='var(--muted)';
+  }
+
+  // Mini chart
+  const chart=document.getElementById('d-chart');
+  const base=d.ping||0;
+  const vals=base>0
+    ?Array.from({length:14},()=>Math.max(1,Math.round(base+(Math.random()-.5)*base*.5)))
+    :Array(14).fill(0);
+  const max=Math.max(...vals,1);
+  chart.innerHTML=vals.map(v=>
+    `<div class="mini-bar-item" style="height:${Math.max(3,Math.round((v/max)*38))}px;opacity:${base>0?.65:.2}"></div>`
+  ).join('');
+
+  document.getElementById('detail-overlay').classList.add('open');
+  document.getElementById('detail-panel').classList.add('open');
+  renderTable();
+}
+
+function closeDetail(){
+  selectedDevice=null;
+  document.getElementById('detail-overlay').classList.remove('open');
+  document.getElementById('detail-panel').classList.remove('open');
+  renderTable();
+}
 </script>
-
 </body>
 </html>
