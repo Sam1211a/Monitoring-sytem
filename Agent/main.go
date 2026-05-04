@@ -41,18 +41,6 @@ func capture() []byte {
 	return buf.Bytes()
 }
 
-// func capture() []byte {
-// 	bounds := screenshot.GetDisplayBounds(0)
-// 	img, err := screenshot.CaptureRect(bounds)
-// 	if err != nil {
-// 		fmt.Println("capture error", err)
-// 		return nil
-// 	}
-// 	var buf bytes.Buffer
-// 	png.Encode(&buf, img)
-// 	return buf.Bytes()
-// }
-
 func streamToServer() {
 	ip := getIP()
 
